@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MemberRole {
+  OWNER
+  LEADER
+  CURATOR
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  avatarUrl    String?
+  bio          String?
+  createdAt    DateTime @default(now())
+
+  ownedCommunities Community[]  @relation("CommunityOwner")
+  memberships      Membership[]
+  posts            Post[]
+  comments         Comment[]
+  likes            Like[]
+  chatMemberships  ChatMember[]
+  messages         Message[]
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  iconUrl     String?
+  ownerId     String
+  owner       User     @relation("CommunityOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+
+  memberships Membership[]
+  posts       Post[]
+  chatRooms   ChatRoom[]
+}
+
+model Membership {
+  id          String     @id @default(cuid())
+  userId      String
+  communityId String
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime   @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  communityId String
+  authorId    String
+  title       String
+  content     String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     Like[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model ChatRoom {
+  id          String   @id @default(cuid())
+  communityId String
+  name        String
+  createdAt   DateTime @default(now())
+
+  community Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  members   ChatMember[]
+  messages  Message[]
+}
+
+model ChatMember {
+  id         String   @id @default(cuid())
+  chatRoomId String
+  userId     String
+  joinedAt   DateTime @default(now())
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatRoomId, userId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  chatRoomId String
+  senderId   String
+  content    String
+  createdAt  DateTime @default(now())
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
