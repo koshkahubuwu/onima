@@ -1,4 +1,4 @@
-import { expProgress } from "@/lib/exp";
+import { expProgress } from "@/lib/exp-level";
 
 export function LevelBadge({ exp, size = "sm" }: { exp: number; size?: "sm" | "md" }) {
   const { level } = expProgress(exp);
