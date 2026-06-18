@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { CommunityHeader } from "@/components/community-header";
-import { ChatLobby } from "@/components/chat-lobby";
+import { PostList } from "@/components/post-list";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatIndexPage({
+export default async function WikiPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -26,27 +26,20 @@ export default async function ChatIndexPage({
       })
     : null;
 
-  const rooms = await prisma.chatRoom.findMany({
-    where: { communityId: community.id },
-    orderBy: { createdAt: "asc" },
+  const posts = await prisma.post.findMany({
+    where: { communityId: community.id, type: "WIKI" },
+    orderBy: { createdAt: "desc" },
     include: {
-      _count: { select: { members: true } },
-      members: session?.user?.id ? { where: { userId: session.user.id } } : false,
+      author: { select: { id: true, username: true, avatarUrl: true } },
+      _count: { select: { likes: true, comments: true } },
+      likes: session?.user?.id ? { where: { userId: session.user.id } } : false,
     },
   });
-
-  const roomItems = rooms.map((r) => ({
-    id: r.id,
-    name: r.name,
-    description: r.description,
-    memberCount: r._count.members,
-    isMember: Boolean(r.members?.length),
-  }));
 
   return (
     <div>
       <CommunityHeader community={community} joined={Boolean(membership)} />
-      <ChatLobby slug={slug} rooms={roomItems} canCreate={Boolean(membership)} />
+      <PostList posts={JSON.parse(JSON.stringify(posts))} />
     </div>
   );
 }

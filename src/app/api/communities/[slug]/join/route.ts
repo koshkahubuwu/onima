@@ -21,6 +21,9 @@ export async function POST(
     where: { userId_communityId: { userId: session.user.id, communityId: community.id } },
   });
   if (existing) {
+    if (existing.role === "OWNER") {
+      return NextResponse.json({ error: "El líder no puede abandonar su comunidad" }, { status: 400 });
+    }
     await prisma.membership.delete({ where: { id: existing.id } });
     return NextResponse.json({ joined: false });
   }
@@ -37,6 +40,17 @@ export async function POST(
       where: { chatRoomId_userId: { chatRoomId: generalRoom.id, userId: session.user.id } },
       create: { chatRoomId: generalRoom.id, userId: session.user.id },
       update: {},
+    });
+  }
+
+  if (community.ownerId !== session.user.id) {
+    await prisma.notification.create({
+      data: {
+        userId: community.ownerId,
+        actorId: session.user.id,
+        type: "JOIN",
+        communityId: community.id,
+      },
     });
   }
 

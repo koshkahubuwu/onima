@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { COMMUNITY_CATEGORIES } from "@/lib/constants";
 
 const createSchema = z.object({
   name: z.string().min(3).max(40),
@@ -11,6 +12,9 @@ const createSchema = z.object({
     .max(40)
     .regex(/^[a-z0-9-]+$/, "Solo letras minúsculas, números y guiones"),
   description: z.string().max(500).optional(),
+  category: z.enum(COMMUNITY_CATEGORIES).optional(),
+  themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  bannerUrl: z.string().url().optional().or(z.literal("")),
 });
 
 export async function GET() {
@@ -35,7 +39,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  const { name, slug, description } = parsed.data;
+  const { name, slug, description, category, themeColor, bannerUrl } = parsed.data;
 
   const existing = await prisma.community.findUnique({ where: { slug } });
   if (existing) {
@@ -47,6 +51,9 @@ export async function POST(req: Request) {
       name,
       slug,
       description,
+      category,
+      themeColor,
+      bannerUrl: bannerUrl || null,
       ownerId: session.user.id,
       memberships: {
         create: { userId: session.user.id, role: "OWNER" },

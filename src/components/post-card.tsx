@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@/components/avatar";
+import { PollBlock } from "@/components/poll-block";
+import { QuizBlock } from "@/components/quiz-block";
 
 export interface PostWithRelations {
   id: string;
+  type: "BLOG" | "POLL" | "QUIZ" | "WIKI";
   title: string;
   content: string;
   imageUrl: string | null;
@@ -12,6 +16,10 @@ export interface PostWithRelations {
   author: { id: string; username: string; avatarUrl: string | null };
   _count: { likes: number; comments: number };
   likes?: { id: string }[];
+  pollOptions?: { id: string; text: string; _count: { votes: number } }[];
+  pollVotes?: { optionId: string }[];
+  quizQuestions?: { id: string; text: string; options: { id: string; text: string }[] }[];
+  quizAttempts?: { score: number; total: number }[];
 }
 
 interface CommentItem {
@@ -20,6 +28,13 @@ interface CommentItem {
   createdAt: string;
   author: { id: string; username: string; avatarUrl: string | null };
 }
+
+const TYPE_BADGE: Record<PostWithRelations["type"], string | null> = {
+  BLOG: null,
+  POLL: null,
+  QUIZ: null,
+  WIKI: "📖 Wiki",
+};
 
 export function PostCard({ post }: { post: PostWithRelations }) {
   const router = useRouter();
@@ -71,14 +86,22 @@ export function PostCard({ post }: { post: PostWithRelations }) {
     }
   }
 
+  const badge = TYPE_BADGE[post.type];
+
   return (
     <article className="rounded-xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
       <div className="mb-2 flex items-center gap-2 text-sm text-neutral-500">
+        <Avatar username={post.author.username} avatarUrl={post.author.avatarUrl} size="sm" />
         <span className="font-medium text-neutral-700 dark:text-neutral-300">
           {post.author.username}
         </span>
         <span>·</span>
         <time>{new Date(post.createdAt).toLocaleString()}</time>
+        {badge && (
+          <span className="ml-auto rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+            {badge}
+          </span>
+        )}
       </div>
       <h3 className="text-lg font-semibold">{post.title}</h3>
       <p className="mt-1 whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
@@ -87,6 +110,22 @@ export function PostCard({ post }: { post: PostWithRelations }) {
       {post.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={post.imageUrl} alt="" className="mt-3 max-h-96 w-full rounded-lg object-cover" />
+      )}
+
+      {post.type === "POLL" && post.pollOptions && (
+        <PollBlock
+          postId={post.id}
+          options={post.pollOptions}
+          votedOptionId={post.pollVotes?.[0]?.optionId ?? null}
+        />
+      )}
+
+      {post.type === "QUIZ" && post.quizQuestions && (
+        <QuizBlock
+          postId={post.id}
+          questions={post.quizQuestions}
+          previousScore={post.quizAttempts?.[0] ?? null}
+        />
       )}
 
       <div className="mt-3 flex items-center gap-4 text-sm text-neutral-500">
@@ -106,9 +145,12 @@ export function PostCard({ post }: { post: PostWithRelations }) {
           {loadingComments && <p className="text-sm text-neutral-400">Cargando...</p>}
           <div className="flex flex-col gap-2">
             {comments?.map((c) => (
-              <div key={c.id} className="text-sm">
-                <span className="font-medium">{c.author.username}</span>{" "}
-                <span className="text-neutral-600 dark:text-neutral-400">{c.content}</span>
+              <div key={c.id} className="flex items-start gap-2 text-sm">
+                <Avatar username={c.author.username} avatarUrl={c.author.avatarUrl} size="xs" />
+                <span>
+                  <span className="font-medium">{c.author.username}</span>{" "}
+                  <span className="text-neutral-600 dark:text-neutral-400">{c.content}</span>
+                </span>
               </div>
             ))}
             {comments?.length === 0 && (

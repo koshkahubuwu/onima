@@ -12,10 +12,13 @@ export default async function HomePage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Explorar comunidades</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Explorar comunidades</h1>
+          <p className="text-sm text-neutral-400">Encuentra tu Amino favorito</p>
+        </div>
         <Link
           href="/communities/new"
-          className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+          className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-violet-700"
         >
           + Nueva comunidad
         </Link>
@@ -31,18 +34,38 @@ export default async function HomePage() {
             <Link
               key={c.id}
               href={`/communities/${c.slug}`}
-              className="rounded-xl border border-black/10 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-neutral-900"
+              className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-neutral-900"
             >
-              <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 text-xl font-bold text-violet-600 dark:bg-violet-900/40">
-                {c.name.charAt(0).toUpperCase()}
+              <div
+                className="h-20 w-full bg-cover bg-center"
+                style={
+                  c.bannerUrl
+                    ? { backgroundImage: `url(${c.bannerUrl})` }
+                    : { background: `linear-gradient(135deg, ${c.themeColor ?? "#7C3AED"}, #ec4899)` }
+                }
+              />
+              <div className="-mt-6 px-4">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-xl text-xl font-bold text-white ring-4 ring-white dark:ring-neutral-900"
+                  style={{ background: c.themeColor ?? "#7C3AED" }}
+                >
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
               </div>
-              <h2 className="font-semibold">{c.name}</h2>
-              {c.description && (
-                <p className="mt-1 line-clamp-2 text-sm text-neutral-500">{c.description}</p>
-              )}
-              <p className="mt-3 text-xs text-neutral-400">
-                {c._count.memberships} miembros · {c._count.posts} posts
-              </p>
+              <div className="px-4 pb-4 pt-2">
+                {c.category && (
+                  <span className="mb-1 inline-block rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                    {c.category}
+                  </span>
+                )}
+                <h2 className="font-semibold group-hover:text-violet-600">{c.name}</h2>
+                {c.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-neutral-500">{c.description}</p>
+                )}
+                <p className="mt-3 text-xs text-neutral-400">
+                  {c._count.memberships} miembros · {c._count.posts} posts
+                </p>
+              </div>
             </Link>
           ))}
         </div>

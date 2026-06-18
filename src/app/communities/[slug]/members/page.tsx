@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { CommunityHeader } from "@/components/community-header";
-import { ChatLobby } from "@/components/chat-lobby";
+import { MemberList } from "@/components/member-list";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatIndexPage({
+const ROLE_ORDER = { OWNER: 0, LEADER: 1, CURATOR: 2, MEMBER: 3 };
+
+export default async function MembersPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -26,27 +28,18 @@ export default async function ChatIndexPage({
       })
     : null;
 
-  const rooms = await prisma.chatRoom.findMany({
+  const members = await prisma.membership.findMany({
     where: { communityId: community.id },
-    orderBy: { createdAt: "asc" },
-    include: {
-      _count: { select: { members: true } },
-      members: session?.user?.id ? { where: { userId: session.user.id } } : false,
-    },
+    include: { user: { select: { id: true, username: true, avatarUrl: true } } },
   });
+  members.sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || b.exp - a.exp);
 
-  const roomItems = rooms.map((r) => ({
-    id: r.id,
-    name: r.name,
-    description: r.description,
-    memberCount: r._count.members,
-    isMember: Boolean(r.members?.length),
-  }));
+  const canManage = membership?.role === "OWNER" || membership?.role === "LEADER";
 
   return (
     <div>
       <CommunityHeader community={community} joined={Boolean(membership)} />
-      <ChatLobby slug={slug} rooms={roomItems} canCreate={Boolean(membership)} />
+      <MemberList slug={slug} members={JSON.parse(JSON.stringify(members))} canManage={canManage} />
     </div>
   );
 }

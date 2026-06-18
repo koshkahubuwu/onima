@@ -13,22 +13,42 @@ enum MemberRole {
   MEMBER
 }
 
+enum PostType {
+  BLOG
+  POLL
+  QUIZ
+  WIKI
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  JOIN
+  LEVEL_UP
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
   email        String   @unique
   passwordHash String
   avatarUrl    String?
+  bannerUrl    String?
   bio          String?
+  title        String?
   createdAt    DateTime @default(now())
 
-  ownedCommunities Community[]  @relation("CommunityOwner")
-  memberships      Membership[]
-  posts            Post[]
-  comments         Comment[]
-  likes            Like[]
-  chatMemberships  ChatMember[]
-  messages         Message[]
+  ownedCommunities       Community[]    @relation("CommunityOwner")
+  memberships            Membership[]
+  posts                  Post[]
+  comments               Comment[]
+  likes                  Like[]
+  chatMemberships        ChatMember[]
+  messages               Message[]
+  pollVotes              PollVote[]
+  quizAttempts           QuizAttempt[]
+  notifications          Notification[] @relation("NotificationRecipient")
+  triggeredNotifications Notification[] @relation("NotificationActor")
 }
 
 model Community {
@@ -37,13 +57,17 @@ model Community {
   slug        String   @unique
   description String?
   iconUrl     String?
+  bannerUrl   String?
+  category    String?
+  themeColor  String?  @default("#7C3AED")
   ownerId     String
   owner       User     @relation("CommunityOwner", fields: [ownerId], references: [id])
   createdAt   DateTime @default(now())
 
-  memberships Membership[]
-  posts       Post[]
-  chatRooms   ChatRoom[]
+  memberships   Membership[]
+  posts         Post[]
+  chatRooms     ChatRoom[]
+  notifications Notification[]
 }
 
 model Membership {
@@ -51,6 +75,7 @@ model Membership {
   userId      String
   communityId String
   role        MemberRole @default(MEMBER)
+  exp         Int        @default(0)
   joinedAt    DateTime   @default(now())
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -63,15 +88,91 @@ model Post {
   id          String   @id @default(cuid())
   communityId String
   authorId    String
+  type        PostType @default(BLOG)
   title       String
   content     String
   imageUrl    String?
   createdAt   DateTime @default(now())
 
-  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments  Comment[]
-  likes     Like[]
+  community     Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  likes         Like[]
+  pollOptions   PollOption[]
+  quizQuestions QuizQuestion[]
+  quizAttempts  QuizAttempt[]
+  pollVotes     PollVote[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  postId String
+  text   String
+  order  Int    @default(0)
+
+  post  Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  postId    String
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post   Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model QuizQuestion {
+  id     String @id @default(cuid())
+  postId String
+  text   String
+  order  Int    @default(0)
+
+  post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options QuizOption[]
+}
+
+model QuizOption {
+  id         String  @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean @default(false)
+  order      Int     @default(0)
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  score     Int
+  total     Int
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  actorId     String?
+  type        NotificationType
+  postId      String?
+  communityId String?
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  user      User       @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User?      @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
 }
 
 model Comment {
@@ -101,6 +202,7 @@ model ChatRoom {
   id          String   @id @default(cuid())
   communityId String
   name        String
+  description String?
   createdAt   DateTime @default(now())
 
   community Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
